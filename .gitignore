@@ -1,0 +1,18 @@
+# Ignore everything
+*
+
+# But not these specific directories and their contents
+!alacritty/
+!kitty/
+!nvim/
+!skhd/
+!yabai/
+
+# ... and not their contents
+!alacritty/**
+!kitty/**
+!nvim/**
+!skhd/**
+!yabai/**
+
+!.gitignore
