@@ -1,0 +1,61 @@
+[font]
+normal = { family = "JetBrainsMono Nerd Font"}
+size = 16
+offset = { x = 1, y = 28 }
+glyph_offset = { x = 0, y = 0 }
+
+[window]
+title = ""
+dimensions = { columns = 200, lines = 40 }
+padding = { x = 10, y = 5 }
+decorations_theme_variant = "Dark"
+
+[cursor]
+style = { shape = "Block", blinking = "Always" }
+blink_interval = 750
+
+# Disable the command q and command w to prevent accidental closing of the window
+[keyboard]
+bindings = [
+    { key = "Q", mods = "Command", action = "None" },
+    { key = "W", mods = "Command", action = "None" },
+]
+
+[colors.primary]
+background = "0x1a1b26"
+foreground = "0xc0caf5"
+
+[colors.normal]
+black = "0x15161e"
+red = "0xf7768e"
+green = "0x9ece6a"
+yellow = "0xe0af68"
+blue = "0x7aa2f7"
+magenta = "0xbb9af7"
+cyan = "0x7dcfff"
+white = "0xa9b1d6"
+
+[colors.bright]
+black = "0x414868"
+red = "0xf7768e"
+green = "0x9ece6a"
+yellow = "0xe0af68"
+blue = "0x7aa2f7"
+magenta = "0xbb9af7"
+cyan = "0x7dcfff"
+white = "0xc0caf5"
+
+[[colors.indexed_colors]]
+index = 16
+color = "0xff9e64"
+
+[[colors.indexed_colors]]
+index = 17
+color = "0xdb4b4b"
+
+[env]
+TERM = "xterm-256color"
+
+# [shell]
+# program = "/bin/zsh"
+# args = ["-l", "-c", "tmux"]
