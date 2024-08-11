@@ -7,6 +7,10 @@ local opts = { noremap = true, silent = true }
 vim.keymap.set('n', '<leader>|', '<cmd>vsplit<cr>', { desc = 'Split window vertically' })
 vim.keymap.set('n', '<leader>i', ':Inspect<cr>', { desc = 'Inspect' })
 
+-- Map j and k to gj and gk
+vim.keymap.set('n', 'j', 'gj', { noremap = true, silent = true, desc = 'Move down by visual line' })
+vim.keymap.set('n', 'k', 'gk', { noremap = true, silent = true, desc = 'Move up by visual line' })
+
 -- Set comfortable motion scroll keys
 vim.g.comfortable_motion_scroll_down_key = 'j'
 vim.g.comfortable_motion_scroll_up_key = 'k'
