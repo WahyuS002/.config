@@ -2,9 +2,6 @@ return {
     { -- Highlight, edit, and navigate code
         'nvim-treesitter/nvim-treesitter',
         build = ':TSUpdate',
-        dependencies = {
-            'windwp/nvim-ts-autotag',
-        },
         opts = {
             autopairs = { enable = true },
             ensure_installed = {
@@ -25,6 +22,9 @@ return {
                 'markdown',
                 'markdown_inline',
                 'json',
+
+                -- others
+                'python',
             },
 
             -- Autoinstall languages that are not installed
@@ -46,11 +46,6 @@ return {
             require('nvim-treesitter.install').prefer_git = true
             ---@diagnostic disable-next-line: missing-fields
             require('nvim-treesitter.configs').setup(opts)
-            require('nvim-ts-autotag').setup {
-                did_setup = true,
-                enable = true,
-                filetypes = { 'html', 'xml', 'tsx' },
-            }
 
             -- There are additional nvim-treesitter modules that you can use to interact
             -- with nvim-treesitter. You should go explore a few and see what interests you:
