@@ -98,6 +98,48 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     end,
 })
 
+-- Remove line numbers when opening the terminal
+vim.api.nvim_create_autocmd('TermOpen', {
+    desc = 'Remove line numbers when opening the terminal',
+    callback = function()
+        vim.wo.number = false
+        vim.wo.relativenumber = false
+    end,
+})
+
+-- Automatically scroll to the bottom of the ipython terminal buffer
+--  This ensures that the most recent output is always visible,
+--  especially when sending code from a Quarto document via vim-slime
+--  and the terminal output exceeds the visible screen area.
+vim.api.nvim_create_autocmd({ 'TermEnter', 'BufEnter', 'BufWinEnter' }, {
+    pattern = 'term://ipython',
+    callback = function()
+        -- Scroll to bottom when entering terminal buffer
+        vim.cmd 'normal! G'
+
+        -- Set up autocmd for changes in this specific buffer
+        local bufnr = vim.api.nvim_get_current_buf()
+        vim.api.nvim_create_autocmd('TextChanged', {
+            buffer = bufnr,
+            callback = function()
+                -- Check if cursor is not at the bottom
+                local last_line = vim.api.nvim_buf_line_count(bufnr)
+                local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+                if cursor_line < last_line then
+                    -- Scroll to bottom
+                    vim.cmd 'normal! G'
+                    -- Move cursor to the input line (usually the last line)
+                    vim.cmd 'normal! $'
+                end
+            end,
+        })
+    end,
+})
+
+-- Quarto keymaps
+vim.keymap.set('n', '<C-i>', 'i```{python}<cr>```<esc>O', { desc = '[i]nsert code chunk' })
+vim.keymap.set('n', '<leader>qt', ':split term://ipython<cr>', { desc = '[Q]uarto repl terminal' })
+
 -- Visual Block --
 -- Move text up and down
 vim.keymap.set('x', 'J', ":move '>+1<CR>gv-gv")
