@@ -139,6 +139,7 @@ vim.api.nvim_create_autocmd({ 'TermEnter', 'BufEnter', 'BufWinEnter' }, {
 -- Quarto keymaps
 vim.keymap.set('n', '<C-i>', 'i```{python}<cr>```<esc>O', { desc = '[i]nsert code chunk' })
 vim.keymap.set('n', '<leader>qt', ':split term://ipython<cr>', { desc = '[Q]uarto repl terminal' })
+vim.keymap.set('n', '<leader>qp', ':QuartoPreview<cr>', { desc = '[Q]uarto preview' })
 
 -- Visual Block --
 -- Move text up and down
