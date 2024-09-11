@@ -9,6 +9,17 @@ return {
             vim.g.vimtex_syntax_enabled = 0
             vim.g.vimtex_syntax_conceal_disable = 1
             vim.g.vimtex_indent_enabled = 1
+
+            vim.g.vimtex_compiler_method = 'latexmk'
+            vim.g.vimtex_compiler_latexmk = {
+                executable = 'latexmk',
+                options = {
+                    '-xelatex',
+                    '-file-line-error',
+                    '-synctex=1',
+                    '-interaction=nonstopmode',
+                },
+            }
         end,
     },
 }
