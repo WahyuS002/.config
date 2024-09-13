@@ -140,10 +140,12 @@ return {
                 group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
                 callback = function(event)
                     vim.lsp.buf.clear_references()
-                    vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event.buf }
+                    local group = vim.api.nvim_get_autocmds { group = 'kickstart-lsp-highlight' }
+                    if #group > 0 then
+                        vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event.buf }
+                    end
                 end,
             })
-
             -- LSP servers and clients are able to communicate to each other what features they support.
             --  By default, Neovim doesn't support everything that is in the LSP specification.
             --  When you add nvim-cmp, luasnip, etc. Neovim now has *more* capabilities.
@@ -203,7 +205,7 @@ return {
             local servers = {
                 -- clangd = {},
                 -- gopls = {},
-                -- pyright = {},
+                pyright = {},
                 -- rust_analyzer = {},
                 -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
                 --
