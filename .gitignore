@@ -7,6 +7,7 @@
 !nvim/
 !skhd/
 !yabai/
+!tmux/
 
 # ... and not their contents
 !alacritty/**
@@ -14,5 +15,6 @@
 !nvim/**
 !skhd/**
 !yabai/**
+!tmux/**
 
 !.gitignore
