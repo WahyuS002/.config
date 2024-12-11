@@ -6,6 +6,7 @@ local opts = { noremap = true, silent = true }
 -- My custom keymaps
 vim.keymap.set('n', '<leader>|', '<cmd>vsplit<cr>', { desc = 'Split window vertically' })
 vim.keymap.set('n', '<leader>i', ':Inspect<cr>', { desc = 'Inspect' })
+vim.keymap.set('x', '<leader>x', ':lua<cr>', { desc = 'Execute Lua on selection' })
 
 -- Map j and k to gj and gk
 vim.keymap.set('n', 'j', 'gj', { noremap = true, silent = true, desc = 'Move down by visual line' })
