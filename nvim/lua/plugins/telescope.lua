@@ -57,7 +57,7 @@ return {
                 --  All the info you're looking for is in `:help telescope.setup()`
                 --
                 defaults = {
-                    path_display = { 'absolute' },
+                    path_display = { 'truncate' },
                     --   mappings = {
                     --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
                     --   },
@@ -72,6 +72,28 @@ return {
                     },
                     live_grep = {
                         additional_args = { '--hidden' },
+                    },
+                    lsp_references = {
+                        path_display = { 'smart' },
+                        show_line = false,
+                        include_declaration = false,
+                        include_current_line = true,
+                        fname_width = 50,
+                    },
+                    lsp_definitions = {
+                        path_display = { 'smart' },
+                        show_line = false,
+                        fname_width = 50,
+                    },
+                    lsp_implementations = {
+                        path_display = { 'smart' },
+                        show_line = false,
+                        fname_width = 50,
+                    },
+                    lsp_type_definitions = {
+                        path_display = { 'smart' },
+                        show_line = false,
+                        fname_width = 50,
                     },
                 },
                 extensions = {
