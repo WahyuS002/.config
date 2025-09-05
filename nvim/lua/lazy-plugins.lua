@@ -22,8 +22,18 @@ require('lazy').setup({
     --  This is equivalent to:
     --    require('Comment').setup({})
 
-    -- "gc" to comment visual regions/lines
-    { 'numToStr/Comment.nvim', opts = {} },
+    -- "gc" to comment visual regions/lines with context-aware support for TSX
+    {
+        'numToStr/Comment.nvim',
+        dependencies = {
+            'JoosepAlviste/nvim-ts-context-commentstring',
+        },
+        config = function()
+            require('Comment').setup {
+                pre_hook = require('ts_context_commentstring.integrations.comment_nvim').create_pre_hook(),
+            }
+        end,
+    },
 
     -- modular approach: using `require 'path/name'` will
     -- include a plugin definition from file lua/path/name.lua
@@ -73,6 +83,13 @@ require('lazy').setup({
     require 'plugins/vimtex',
 
     require 'plugins/vim-rest-console',
+
+    require 'plugins/typr',
+
+    require 'plugins/presenting',
+
+    -- Vim game for practicing motions
+    'ThePrimeagen/vim-be-good',
 
     -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
     -- init.lua. If you want these files, they are in the repository, so you can just download them and
