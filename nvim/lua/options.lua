@@ -26,7 +26,7 @@ vim.opt.undofile = true -- save undo history
 vim.opt.updatetime = 300 -- faster completion (4000ms default)
 vim.opt.writebackup = false -- if a file is being edited by another program (or was written to file while editing with another program), it is not allowed to be edited
 vim.opt.expandtab = true -- convert tabs to spaces
-vim.opt.shiftwidth = 4 -- the number of spaces inserted for each indentation
+vim.opt.shiftwidth = 2 -- the number of spaces inserted for each indentation
 vim.opt.tabstop = 8 -- Always 8 (see :h tabstop)
 vim.opt.softtabstop = 4
 vim.opt.cursorline = true -- highlight the current line
@@ -50,6 +50,16 @@ vim.opt.foldlevel = 99
 -- Disable auto commenting new lines
 vim.api.nvim_create_autocmd('FileType', {
     command = 'set formatoptions-=cro',
+})
+
+-- Go-specific settings
+vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'go',
+    callback = function()
+        vim.opt_local.tabstop = 4
+        vim.opt_local.shiftwidth = 4
+        vim.opt_local.expandtab = false -- Go uses real tabs
+    end,
 })
 
 -- Markdown-specific settings (2 spaces for indentation)
