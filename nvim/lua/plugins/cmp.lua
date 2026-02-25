@@ -2,7 +2,6 @@ return {
 
     { -- Autocompletion
         'hrsh7th/nvim-cmp',
-        event = 'InsertEnter',
         dependencies = {
             -- Snippet Engine & its associated nvim-cmp source
             {
@@ -70,6 +69,7 @@ return {
             }
 
             luasnip.config.setup {}
+            require('luasnip.loaders.from_lua').load { paths = { vim.fn.stdpath 'config' .. '/lua/snippets' } }
 
             local has_words_before = function()
                 if vim.api.nvim_buf_get_option(0, 'buftype') == 'prompt' then
@@ -183,8 +183,8 @@ return {
                 sources = {
                     -- copilot source
                     -- { name = 'copilot' },
-                    { name = 'nvim_lsp' },
                     { name = 'luasnip' },
+                    { name = 'nvim_lsp' },
                     { name = 'path' },
                 },
             }
