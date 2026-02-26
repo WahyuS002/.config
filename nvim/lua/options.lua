@@ -40,7 +40,7 @@ vim.opt.sidescrolloff = 8
 vim.opt.guifont = 'monospace:h17' -- the font used in graphical neovim applications
 vim.opt.breakindent = true -- enable break indent
 vim.opt.list = true -- set how neovil will display certain whitespace characters in the editor
-vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
+vim.opt.listchars = { trail = '·', nbsp = '␣' }
 vim.opt.inccommand = 'split' -- preview substitutions oive, as you type!
 vim.opt.shortmess:append 'c'
 vim.opt.foldenable = true -- Enable folding
@@ -59,6 +59,7 @@ vim.api.nvim_create_autocmd('FileType', {
         vim.opt_local.tabstop = 4
         vim.opt_local.shiftwidth = 4
         vim.opt_local.expandtab = false -- Go uses real tabs
+        vim.opt_local.list = false -- don't show tab characters
     end,
 })
 
