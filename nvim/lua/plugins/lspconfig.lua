@@ -219,6 +219,8 @@ return {
                 -- clangd = {},
                 gopls = {},
                 pyright = {},
+                tsserver = {},
+                svelte = {},
                 -- rust_analyzer = {},
                 -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
                 --
@@ -253,15 +255,14 @@ return {
             --  You can press `g?` for help in this menu.
             require('mason').setup()
 
-            -- You can add other tools here that you want Mason to install
-            -- for you, so that they are available from within Neovim.
-            local ensure_installed = vim.tbl_keys(servers or {})
-            vim.list_extend(ensure_installed, {
-                'stylua', -- Used to format Lua code
-            })
-            require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+            -- mason-tool-installer: hanya untuk non-LSP tools (formatter, linter, dll)
+            require('mason-tool-installer').setup {
+                ensure_installed = { 'stylua' },
+            }
 
+            -- mason-lspconfig: mengerti mapping nama lspconfig → Mason package
             require('mason-lspconfig').setup {
+                ensure_installed = vim.tbl_keys(servers or {}),
                 handlers = {
                     function(server_name)
                         local server = servers[server_name] or {}

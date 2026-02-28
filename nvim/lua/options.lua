@@ -25,10 +25,9 @@ vim.opt.timeoutlen = 300 -- time to wait for a mapped sequence to complete (in m
 vim.opt.undofile = true -- save undo history
 vim.opt.updatetime = 300 -- faster completion (4000ms default)
 vim.opt.writebackup = false -- if a file is being edited by another program (or was written to file while editing with another program), it is not allowed to be edited
-vim.opt.expandtab = true -- convert tabs to spaces
-vim.opt.shiftwidth = 2 -- the number of spaces inserted for each indentation
-vim.opt.tabstop = 8 -- Always 8 (see :h tabstop)
-vim.opt.softtabstop = 4
+vim.opt.expandtab = false -- use real tabs
+vim.opt.shiftwidth = 4 -- indent width
+vim.opt.tabstop = 4 -- tab display width
 vim.opt.cursorline = true -- highlight the current line
 vim.opt.number = true -- set numbered lines
 vim.opt.relativenumber = true -- set relative numbered lines
@@ -39,7 +38,7 @@ vim.opt.scrolloff = 8 -- is one of my fav
 vim.opt.sidescrolloff = 8
 vim.opt.guifont = 'monospace:h17' -- the font used in graphical neovim applications
 vim.opt.breakindent = true -- enable break indent
-vim.opt.list = true -- set how neovil will display certain whitespace characters in the editor
+vim.opt.list = false -- don't show whitespace characters
 vim.opt.listchars = { trail = '·', nbsp = '␣' }
 vim.opt.inccommand = 'split' -- preview substitutions oive, as you type!
 vim.opt.shortmess:append 'c'
