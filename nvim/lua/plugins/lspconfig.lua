@@ -193,6 +193,19 @@ return {
                 border = 'rounded',
             })
 
+            -- Downgrade Go's UnusedVar from error to warning
+            local orig_publish = vim.lsp.handlers['textDocument/publishDiagnostics']
+            vim.lsp.handlers['textDocument/publishDiagnostics'] = function(err, result, ctx, cfg)
+                if result and result.diagnostics then
+                    for _, diag in ipairs(result.diagnostics) do
+                        if diag.code == 'UnusedVar' then
+                            diag.severity = vim.lsp.protocol.DiagnosticSeverity.Warning
+                        end
+                    end
+                end
+                orig_publish(err, result, ctx, cfg)
+            end
+
             -- Enable the following language servers
             --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
             --
