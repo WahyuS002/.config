@@ -97,7 +97,7 @@ return {
 
                     -- Opens a popup that displays documentation about the word under your cursor
                     --  See `:help K` for why this keymap.
-                    map('K', vim.lsp.buf.hover, 'Hover Documentation')
+                    map('K', function() vim.lsp.buf.hover({ border = 'rounded' }) end, 'Hover Documentation')
 
                     -- WARN: This is not Goto Definition, this is Goto Declaration.
                     --  For example, in C this would take you to the header.
@@ -184,14 +184,6 @@ return {
             }
 
             vim.diagnostic.config(config)
-
-            vim.lsp.handlers['textDocument/hover'] = vim.lsp.with(vim.lsp.handlers.hover, {
-                border = 'rounded',
-            })
-
-            vim.lsp.handlers['textDocument/signatureHelp'] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-                border = 'rounded',
-            })
 
             -- Downgrade Go's UnusedVar from error to warning
             local orig_publish = vim.lsp.handlers['textDocument/publishDiagnostics']
