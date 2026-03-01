@@ -46,6 +46,16 @@ vim.opt.foldenable = true -- Enable folding
 vim.opt.foldmethod = 'indent' -- Set fold method to manual
 vim.opt.foldlevel = 99
 
+-- Auto-reload files changed outside of Neovim
+vim.opt.autoread = true
+vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI' }, {
+    callback = function()
+        if vim.fn.mode() ~= 'c' then
+            vim.cmd 'checktime'
+        end
+    end,
+})
+
 -- Disable auto commenting new lines
 vim.api.nvim_create_autocmd('FileType', {
     command = 'set formatoptions-=cro',
