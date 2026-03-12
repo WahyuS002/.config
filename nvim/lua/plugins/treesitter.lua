@@ -26,6 +26,7 @@ return {
                 -- others
                 'python',
                 'go',
+                'proto',
             },
 
             -- Autoinstall languages that are not installed
