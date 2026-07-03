@@ -81,6 +81,39 @@ return {
                     },
                 },
             }
+
+            -- 'insert_at_end' alone is not reliable: once no buffer is "new" it
+            -- re-sorts everything by buffer id on each render, and since 'bdelete'
+            -- recycles buffer numbers, a reopened file gets its old (low) id and
+            -- jumps to the far left. Pin the order via custom_sort (which bypasses
+            -- that sorter) with every new buffer shifted to the last position.
+            local group = vim.api.nvim_create_augroup('BufferlineInsertAtEnd', { clear = true })
+            vim.api.nvim_create_autocmd('BufAdd', {
+                group = group,
+                callback = function(args)
+                    vim.schedule(function()
+                        if not vim.api.nvim_buf_is_valid(args.buf) or not vim.bo[args.buf].buflisted then
+                            return
+                        end
+                        nvim_bufferline() -- sync bufferline state so it includes the new buffer
+                        local state = require 'bufferline.state'
+                        local utils = require 'bufferline.utils'
+                        for index, item in ipairs(state.components) do
+                            local element = item:as_element()
+                            if element and element.id == args.buf then
+                                if index < #state.components then
+                                    -- shift the new buffer to the end (move_to would swap, shuffling the others)
+                                    table.insert(state.components, table.remove(state.components, index))
+                                end
+                                state.custom_sort = utils.get_ids(state.components)
+                                utils.save_positions(state.custom_sort)
+                                require('bufferline.ui').refresh()
+                                return
+                            end
+                        end
+                    end)
+                end,
+            })
         end,
     },
 }
