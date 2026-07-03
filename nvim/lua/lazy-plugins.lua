@@ -88,6 +88,8 @@ require('lazy').setup({
 
     require 'plugins/presenting',
 
+    require 'plugins/cloak',
+
     -- Vim game for practicing motions
     'ThePrimeagen/vim-be-good',
 
