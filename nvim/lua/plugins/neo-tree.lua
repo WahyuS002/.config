@@ -5,7 +5,7 @@ return {
         'nvim-tree/nvim-web-devicons',
         'MunifTanjim/nui.nvim',
     },
-    event = 'VeryLazy',
+    lazy = false, -- neo-tree lazily loads itself; loading at startup lets it hijack `nvim <dir>`
     keys = {
         { '<leader>e', ':Neotree toggle float reveal_force_cwd<CR>', silent = true, desc = 'Float File Explorer' },
         { '<leader><tab>', ':Neotree toggle right reveal_force_cwd<CR>', silent = true, desc = 'Right File Explorer' },
@@ -54,6 +54,7 @@ return {
                 width = 35,
             },
             filesystem = {
+                hijack_netrw_behavior = 'open_current',
                 use_libuv_file_watcher = true,
                 filtered_items = {
                     hide_dotfiles = false,
