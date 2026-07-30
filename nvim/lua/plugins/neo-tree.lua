@@ -54,7 +54,7 @@ return {
                 width = 35,
             },
             filesystem = {
-                hijack_netrw_behavior = 'open_current',
+                hijack_netrw_behavior = 'open_default', -- 'open_current' would ignore window.position and take over the full window
                 use_libuv_file_watcher = true,
                 filtered_items = {
                     hide_dotfiles = false,
