@@ -90,6 +90,8 @@ require('lazy').setup({
 
     require 'plugins/cloak',
 
+    require 'plugins/lint',
+
     -- Vim game for practicing motions
     'ThePrimeagen/vim-be-good',
 
@@ -104,7 +106,6 @@ require('lazy').setup({
     --
     -- require 'plugins.debug',
     -- require 'plugins.indent_line',
-    -- require 'plugins.lint',
 
     -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
     --    This is the easiest way to modularize your config.

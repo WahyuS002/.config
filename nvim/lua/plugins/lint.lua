@@ -7,6 +7,7 @@ return {
       local lint = require 'lint'
       lint.linters_by_ft = {
         markdown = { 'markdownlint' },
+        go = { 'golangcilint' },
       }
 
       -- To allow other plugins to add linters to require('lint').linters_by_ft,
@@ -47,7 +48,10 @@ return {
       vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
         group = lint_augroup,
         callback = function()
-          require('lint').try_lint()
+          -- golangci-lint needs to run from the module root, not nvim's cwd,
+          -- otherwise it lints the file without package context and misses most issues.
+          local root = vim.fs.root(0, 'go.mod')
+          require('lint').try_lint(nil, root and { cwd = root } or nil)
         end,
       })
     end,
