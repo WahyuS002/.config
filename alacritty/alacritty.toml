@@ -1,7 +1,7 @@
 [font]
-normal = { family = "Kode Mono"}
+normal = { family = "JetBrainsMono Nerd Font"}
 size = 16
-offset = { x = 1, y = 4 }
+offset = { x = 1, y = 20 }
 glyph_offset = { x = 0, y = 0 }
 
 [window]
@@ -19,6 +19,8 @@ blink_interval = 750
 bindings = [
     { key = "Q", mods = "Command", action = "None" },
     { key = "W", mods = "Command", action = "None" },
+    { key = "Left", mods = "Alt", chars = "\u001bb" },
+    { key = "Right", mods = "Alt", chars = "\u001bf" },
 ]
 
 [colors.primary]
