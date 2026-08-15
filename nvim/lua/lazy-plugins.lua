@@ -90,6 +90,8 @@ require('lazy').setup({
 
     require 'plugins/cloak',
 
+    require 'plugins/render-markdown',
+
     require 'plugins/lint',
 
     -- Vim game for practicing motions
