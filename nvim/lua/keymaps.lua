@@ -59,8 +59,11 @@ vim.keymap.set('v', '<A-k>', ':m .-2<CR>==')
 vim.keymap.set('v', 'p', '"_dP')
 
 -- Navigate buffers
-vim.keymap.set('n', '<S-l>', ':bnext<CR>')
-vim.keymap.set('n', '<S-h>', ':bprevious<CR>')
+-- BufferLineCycle* follows the visual tab order (custom_sort), unlike
+-- :bnext/:bprevious which walk buffer ids and feel reversed once ids and
+-- display order diverge.
+vim.keymap.set('n', '<S-l>', ':BufferLineCycleNext<CR>')
+vim.keymap.set('n', '<S-h>', ':BufferLineCyclePrev<CR>')
 
 -- Bufferline
 vim.keymap.set('n', '<leader>bd', ':bdelete!<CR>')
