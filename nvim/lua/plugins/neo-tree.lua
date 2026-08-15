@@ -52,6 +52,13 @@ return {
             window = {
                 position = 'float',
                 width = 35,
+                mappings = {
+                    ['Y'] = function(state)
+                        local path = state.tree:get_node().path
+                        vim.fn.setreg('+', path)
+                        vim.notify(path, vim.log.levels.INFO, { title = 'Copied absolute path' })
+                    end,
+                },
             },
             filesystem = {
                 hijack_netrw_behavior = 'open_default', -- 'open_current' would ignore window.position and take over the full window
