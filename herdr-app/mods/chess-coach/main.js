@@ -1,7 +1,10 @@
 // Chess coach: the concepts to study, ranked from bosbandid's own games
 // (analysis/report.json from ~/Development/Projects/chess.com), each shown on a board
 // with real positions where the mistake happened.
-// Keys: up/down concept, left/right example, space reveal, o open game, l practice, a ask the agent beside.
+// Guess mode: the played move stays hidden; click a piece, then a square. The first guess per
+// position counts toward the concept's score (localStorage). Only Stockfish's single best move
+// counts as right (the report keeps one PV), and legality isn't checked.
+// Keys: up/down concept, left/right example, space reveal, o open game, p practice, a ask the agent, c concepts.
 import { View, div, image } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { readTextFile, home, appHome, theme, settings, panes, agents, focused, props, hc, run, notify, nextCommand } from "herdr";
@@ -9,7 +12,8 @@ import * as fs from "fs/promises";
 
 const REPORT = () => props()?.report || `${home()}/Development/Projects/chess.com/analysis/report.json`;
 const LIGHT = "#f0d9b5", DARK = "#b58863";
-const MARK = { played: ["#f2a08f", "#d0705c"], best: ["#cdd26a", "#aaa23a"] };
+const MARK = { played: ["#f2a08f", "#d0705c"], best: ["#cdd26a", "#aaa23a"], pick: ["#f7ec74", "#dac34b"], guess: ["#a9c8ec", "#7ba3cf"] };
+const SCORE_KEY = "chess-coach-score";
 const ROLE = { allowed: "dimanfaatkan lawan", missed: "peluang yang lo lewatkan", game: "posisi menang lepas", unexplained: "tanpa pola taktik jelas" };
 
 function parseFen(fen) {
@@ -28,6 +32,8 @@ function parseFen(fen) {
 export default class ChessCoach extends View {
   init(_props, cx) {
     this.ci = 0; this.ei = 0; this.revealed = false; this.size = { width: 900, height: 700 };
+    this.pick = null; this.guess = null;
+    try { this.tries = JSON.parse(localStorage.getItem(SCORE_KEY) || "{}"); } catch { this.tries = {}; }
     this.h = cx.focus_handle();
     this.load(cx);
     cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "focus") this.h.focus(); cx.notify(); } });
@@ -52,7 +58,31 @@ export default class ChessCoach extends View {
 
   go(dc, de) {
     if (dc) { this.ci += dc; this.ei = 0; } else this.ei += de;
-    this.revealed = false; this.clamp(); this.save();
+    this.revealed = false; this.pick = null; this.guess = null; this.clamp(); this.save();
+  }
+
+  shown() { return this.revealed || this.guess !== null; }
+  right() { const e = this.example(); return !!(this.guess && e?.best_uci && this.guess === e.best_uci.slice(0, 4)); }
+
+  // tries: { "<game link>#<ply>": { concept, right } }, first guess only.
+  score(conceptId) {
+    const all = Object.values(this.tries).filter((x) => x.concept === conceptId);
+    return { right: all.filter((x) => x.right).length, total: all.length };
+  }
+
+  clickSquare(name, at) {
+    const e = this.example();
+    if (!e || this.shown()) return;
+    const mine = at[name]?.[0] === e.me[0];
+    if (mine) { this.pick = this.pick === name ? null : name; return; }
+    if (!this.pick) return;
+    this.guess = this.pick + name;
+    this.pick = null;
+    const key = `${e.link}#${e.ply}`;
+    if (!this.tries[key]) {
+      this.tries[key] = { concept: this.concept().id, right: this.right() };
+      try { localStorage.setItem(SCORE_KEY, JSON.stringify(this.tries)); } catch {}
+    }
   }
 
   // The agent beside the board reads this to know what's on it.
@@ -82,8 +112,13 @@ export default class ChessCoach extends View {
       notify({ title: "Claude dibuka di bawah papan", body: "Tekan 'a' lagi setelah Claude siap.", level: "info" });
       return;
     }
-    const r = await hc(["send", "--if", "idle", agent.address, this.prompt()]);
-    if (r.code !== 0) notify({ title: "Agent lagi sibuk", body: "Tunggu dia selesai, lalu tekan 'a' lagi.", level: "warning" });
+    // "done" = finished while nobody looked; it's as ready as "idle" (hc send --if only knows idle/working).
+    if (agent.status === "working" || agent.status === "blocked") {
+      notify({ title: "Agent lagi sibuk", body: "Tunggu dia selesai, lalu tekan 'a' lagi.", level: "warning" });
+      return;
+    }
+    const r = await hc(["send", agent.address, this.prompt()]);
+    if (r.code !== 0) notify({ title: "Gagal kirim ke agent", body: (r.stderr || r.stdout || `exit ${r.code}`).trim().slice(0, 200), level: "error" });
   }
 
   key(e, cx) {
@@ -93,6 +128,7 @@ export default class ChessCoach extends View {
     else if (k === "left" || k === "h") this.go(0, -1);
     else if (k === "right" || k === "l") this.go(0, 1);
     else if (k === "space") this.revealed = !this.revealed;
+    else if (k === "escape" && this.pick) this.pick = null;
     else if (k === "o" && this.example()) cx.open_url(this.example().link);
     else if (k === "p" && this.concept()) cx.open_url(this.concept().practice);
     else if (k === "a" && this.example()) cx.spawn(async (cx) => this.ask(cx));
@@ -114,8 +150,11 @@ export default class ChessCoach extends View {
     const at = parseFen(e.fen), flip = e.me === "black";
     const marks = {};
     const mark = (uci, kind) => { if (uci) { marks[uci.slice(0, 2)] = kind; marks[uci.slice(2, 4)] = kind; } };
-    mark(e.played_uci, "played");
-    if (this.revealed) mark(e.best_uci, "best");
+    if (this.shown()) {
+      mark(e.played_uci, "played");
+      if (this.guess && !this.right()) mark(this.guess, "guess");
+      mark(e.best_uci, "best");
+    } else if (this.pick) marks[this.pick] = "pick";
     const rows = [];
     for (let r = 0; r < 8; r++) {
       const cells = [];
@@ -124,7 +163,8 @@ export default class ChessCoach extends View {
         const name = `${"abcdefgh"[file]}${rank}`, light = (file + rank) % 2 === 1;
         const m = marks[name], bg = m ? MARK[m][light ? 0 : 1] : light ? LIGHT : DARK;
         const ink = light ? DARK : LIGHT;
-        let cell = div().w(sq).h(sq).bg(bg).relative();
+        let cell = div().id(`sq-${name}`).w(sq).h(sq).bg(bg).relative()
+          .when(!this.shown(), (el) => el.cursor_pointer().on_click((_e, cx) => { this.clickSquare(name, at); this.h.focus(); cx.notify(); }));
         if (c === 0) cell = cell.child(div().absolute().top(1).left(3).text_size(Math.max(9, sq / 7)).text_color(ink).child(String(rank)));
         if (r === 7) cell = cell.child(div().absolute().bottom(1).right(3).text_size(Math.max(9, sq / 7)).text_color(ink).child("abcdefgh"[file]));
         if (at[name]) cell = cell.child(image(`mods/chess-coach/pieces/${at[name]}.svg`).w(sq).h(sq));
@@ -150,18 +190,30 @@ export default class ChessCoach extends View {
   detail(t, c, e) {
     const winColor = (w) => (w >= 60 ? t.done : w >= 40 ? t.foreground : t.blocked);
     const clock = e.clock != null ? ` · jam ${Math.floor(e.clock / 60)}:${String(Math.floor(e.clock % 60)).padStart(2, "0")}` : "";
-    const lines = [
-      h_flex().flex_wrap().gap(5).text_size(13)
-        .child(div().text_color(t.muted).child(`${e.move_no}.`))
+    const sq = (uci) => `${uci.slice(0, 2)}–${uci.slice(2, 4)}`;
+    const lines = [];
+    if (!this.shown()) {
+      lines.push(div().text_size(13).child(`Langkah ${e.move_no}, lo ${e.me === "white" ? "putih" : "hitam"} · peluang menang ${e.win_before}%`));
+      lines.push(div().text_size(12).text_color(t.accent).child(this.pick
+        ? `${this.pick} dipilih. Klik petak tujuannya (Esc batal).`
+        : "Langkah terbaik di sini apa? Klik bidak lo, lalu petak tujuannya."));
+    } else {
+      if (this.guess) {
+        const again = e.played_uci && this.guess === e.played_uci.slice(0, 4);
+        lines.push(div().text_size(13).font_semibold().text_color(this.right() ? t.done : t.blocked).child(this.right()
+          ? `✓ Benar: ${e.best}`
+          : again ? `✗ ${sq(this.guess)}: itu langkah yang dulu lo mainin` : `✗ Tebakan lo ${sq(this.guess)} (biru)`));
+      }
+      lines.push(h_flex().flex_wrap().gap(5).text_size(13)
+        .child(div().text_color(t.muted).child(`${e.move_no}. dulu`))
         .child(div().font_semibold().text_color("#d0705c").child(e.played))
         .child(div().text_color(winColor(e.win_before)).child(`${e.win_before}%`))
         .child(div().text_color(t.muted).child("→"))
         .child(div().text_color(winColor(e.win_after)).child(`${e.win_after}%`))
-        .when(this.revealed, (el) => el
-          .child(div().text_color(t.muted).child("· terbaik"))
-          .child(div().font_semibold().text_color(t.done).child(e.best || "-"))),
-    ];
-    if (this.revealed) {
+        .child(div().text_color(t.muted).child("· terbaik"))
+        .child(div().font_semibold().text_color(t.done).child(e.best || "-")));
+    }
+    if (this.shown()) {
       if (e.reply_line.length) lines.push(div().text_size(11).text_color(t.muted).child(`Lawan bisa: ${e.reply_line.join(" ")}`));
       lines.push(div().text_size(11).text_color(t.muted).child(c.why));
     }
@@ -183,7 +235,10 @@ export default class ChessCoach extends View {
       .child(v_flex().id("title").flex_1().min_w(0).cursor_pointer()
         .on_click((_e, cx) => { this.listOpen = !this.listOpen; cx.notify(); })
         .child(div().text_size(13).font_semibold().truncate().child(c.name))
-        .child(div().text_size(11).text_color(t.muted).truncate().child(`${c.name_id} · ${c.games} game${c.mechanical ? "" : " · tafsiran"}`)))
+        .child(div().text_size(11).text_color(t.muted).truncate().child((() => {
+          const s = this.score(c.id);
+          return `${c.name_id} · ${c.games} game${c.mechanical ? "" : " · tafsiran"}${s.total ? ` · tebakan ${s.right}/${s.total}` : ""}`;
+        })())))
       .child(div().flex_none().text_size(11).text_color(t.dim).child(`${this.ci + 1}/${n}`)));
     if (this.listOpen) return root.child(this.list(t));
     if (!e) return root;
@@ -196,7 +251,8 @@ export default class ChessCoach extends View {
         .child(this.button(t, "prev", "◀", () => this.go(0, -1)))
         .child(div().text_size(11).text_color(t.muted).child(`${this.ei + 1}/${c.examples.length}`))
         .child(this.button(t, "next", "▶", () => this.go(0, 1)))
-        .child(this.button(t, "reveal", this.revealed ? "Tutup" : "Jawaban", () => { this.revealed = !this.revealed; }))
+        .when(!this.guess, (el) => el.child(this.button(t, "reveal", this.revealed ? "Tutup" : "Jawaban", () => { this.revealed = !this.revealed; this.pick = null; })))
+        .when(!!this.guess, (el) => el.child(this.button(t, "retry", "Ulang", () => { this.guess = null; this.revealed = false; })))
         .child(this.button(t, "ask", "Tanya", (cx) => cx.spawn(async (cx) => this.ask(cx))))
         .child(this.button(t, "game", "Game", (cx) => cx.open_url(e.link)))
         .child(this.button(t, "practice", "Latihan", (cx) => cx.open_url(c.practice))))
