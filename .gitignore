@@ -17,4 +17,18 @@
 !yabai/**
 !tmux/**
 
+# herdr: only my own layout and mod (the rest is written by the app)
+!herdr-app/
+herdr-app/*
+!herdr-app/layouts/
+herdr-app/layouts/*
+!herdr-app/layouts/catur.json
+!herdr-app/mods/
+herdr-app/mods/*
+!herdr-app/mods/chess-coach/
+!herdr-app/mods/chess-coach/**
+herdr-app/mods/chess-coach/.current.json
+herdr-app/mods/chess-coach/*.d.ts
+herdr-app/mods/chess-coach/jsconfig.json
+
 !.gitignore
