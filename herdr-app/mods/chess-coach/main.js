@@ -9,7 +9,7 @@
 // A guess counts when it is any move in the example's `good` list (top engine moves within
 // 5% win), illegal clicks are refused using the `legal` map from concepts.py.
 // Keys: 1/2/3 modes, m mute, space answer, enter next, arrows browse, a ask agent, r reload.
-import { View, div, image } from "gpui-kit";
+import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { readTextFile, home, appHome, theme, settings, panes, agents, focused, props, hc, run, notify, nextCommand, playSound } from "herdr";
 import * as fs from "fs/promises";
@@ -18,6 +18,7 @@ const REPORT = () => props()?.report || `${home()}/Development/Projects/chess.co
 const LIGHT = "#f0d9b5", DARK = "#b58863";
 const MARK = { played: ["#f2a08f", "#d0705c"], best: ["#cdd26a", "#aaa23a"], pick: ["#f7ec74", "#dac34b"], guess: ["#a9c8ec", "#7ba3cf"] };
 const STORE = "chess-coach-v2";
+const ICON = (name) => `mods/chess-coach/icons/${name}.svg`;
 const DAILY_SIZE = 10, DAILY_SECONDS = 60, RUSH_SECONDS = 180, RUSH_LIVES = 3;
 const BOXES = [1, 3, 7, 21]; // days until the next review after a right answer, by box
 const MASTERED = BOXES.length;
@@ -278,7 +279,8 @@ export default class ChessCoach extends View {
     else if (k === "2") this.startRush();
     else if (k === "3") this.startExplore();
     else if (k === "escape") { if (this.pick) this.pick = null; else if (this.listOpen) this.listOpen = false; else return; }
-    else if (m === "result") { if (k !== "enter") return; if (this.result.kind === "daily") this.startDaily(); else this.startRush(); } else if (k === "space" && m !== "rush") { if (!this.guess && !this.timedOut) this.revealed = !this.revealed; }
+    else if (m === "result") { if (k !== "enter") return; if (this.result.kind === "daily") this.startDaily(); else this.startRush(); } else if (k === "space" && m === "daily") { if (!this.shown()) { this.revealed = true; this.record(this.current(), false); } }
+    else if (k === "space" && m === "explore") { if (!this.guess && !this.timedOut) this.revealed = !this.revealed; }
     else if (k === "enter" && m === "daily" && this.shown()) this.next();
     else if (k === "a" && m !== "rush" && this.current()) cx.spawn(async () => this.ask());
     else if (k === "o" && m !== "rush" && this.current()) cx.open_url(this.current().e.link);
@@ -298,11 +300,22 @@ export default class ChessCoach extends View {
   }
 
   // ---------- drawing ----------
-  button(t, id, label, onClick, strong) {
-    return div().id(id).flex_none().px(8).py(4).rounded(5).text_size(11).cursor_pointer()
+  mono() { return settings()?.font_family ?? "JetBrains Mono"; }
+
+  button(t, id, label, onClick, strong, key) {
+    return h_flex().id(id).flex_none().h(28).px(10).gap(6).items_center().rounded(7).text_size(12).cursor_pointer()
       .bg(strong ? t.solid : t.raised).text_color(strong ? t.solid_foreground : t.foreground)
       .hover((s) => s.bg(strong ? t.accent : t.hover))
-      .on_click((_e, cx) => { onClick(cx); this.h.focus(); cx.notify(); }).child(label);
+      .on_click((_e, cx) => { onClick(cx); this.h.focus(); cx.notify(); })
+      .child(label)
+      .when(!!key, (el) => el.child(div().text_size(10).opacity(0.55).child(key)));
+  }
+
+  iconButton(t, id, icon, tip, onClick) {
+    return h_flex().id(id).flex_none().size(26).items_center().justify_center().rounded(7).cursor_pointer()
+      .text_color(t.muted).hover((s) => s.bg(t.hover)).tooltip(tip)
+      .on_click((_e, cx) => { onClick(cx); this.h.focus(); cx.notify(); })
+      .child(svg(ICON(icon)).size(14));
   }
 
   board(e, sq) {
@@ -320,6 +333,7 @@ export default class ChessCoach extends View {
       const file = name.charCodeAt(0) - 97, rank = Number(name[1]);
       return flip ? { x: (7 - file) * sq, y: (rank - 1) * sq } : { x: file * sq, y: (8 - rank) * sq };
     };
+    const coord = Math.max(8, Math.round(sq / 5.5));
     const rows = [];
     for (let r = 0; r < 8; r++) {
       const cells = [];
@@ -330,15 +344,15 @@ export default class ChessCoach extends View {
         const ink = light ? DARK : LIGHT;
         let cell = div().id(`sq-${name}`).w(sq).h(sq).bg(bg).relative()
           .when(!this.shown(), (el) => el.cursor_pointer().on_click((_e, cx) => { this.clickSquare(name, at, cx); this.h.focus(); cx.notify(); }));
-        if (c === 0) cell = cell.child(div().absolute().top(1).left(3).text_size(Math.max(9, sq / 7)).text_color(ink).child(String(rank)));
-        if (r === 7) cell = cell.child(div().absolute().bottom(1).right(3).text_size(Math.max(9, sq / 7)).text_color(ink).child("abcdefgh"[file]));
+        if (c === 0) cell = cell.child(div().absolute().top(2).left(3).text_size(coord).font_semibold().text_color(ink).child(String(rank)));
+        if (r === 7) cell = cell.child(div().absolute().bottom(1).right(3).text_size(coord).font_semibold().text_color(ink).child("abcdefgh"[file]));
         const hidden = a && (name === a.from || name === a.to);
         if (at[name] && !hidden) cell = cell.child(image(`mods/chess-coach/pieces/${at[name]}.svg`).w(sq).h(sq));
         cells.push(cell);
       }
       rows.push(h_flex().children(cells));
     }
-    let grid = v_flex().relative().flex_none().rounded(3).overflow_hidden().children(rows);
+    let grid = v_flex().relative().flex_none().rounded(6).overflow_hidden().children(rows);
     if (a) {
       const from = xy(a.from), to = xy(a.to), p = a.phase ? to : from;
       grid = grid
@@ -347,7 +361,7 @@ export default class ChessCoach extends View {
         .child(image(`mods/chess-coach/pieces/${a.piece}.svg`).id("slide").absolute().left(p.x).top(p.y).w(sq).h(sq)
           .transition("left", { duration: 180, easing: "ease-out" }).transition("top", { duration: 180, easing: "ease-out" }));
     }
-    return grid;
+    return h_flex().flex_none().justify_center().child(grid);
   }
 
   boardSize(reserve) {
@@ -357,159 +371,196 @@ export default class ChessCoach extends View {
   }
 
   feedback(t, q) {
-    const e = q.e, lines = [];
+    const e = q.e;
     const sqs = (uci) => `${uci.slice(0, 2)}–${uci.slice(2, 4)}`;
     if (!this.shown()) {
+      const white = e.me === "white";
       const waiting = !this.engaged && (this.mode === "daily" || this.mode === "rush");
-      if (waiting) lines.push(div().text_size(11).text_color(t.muted).child(this.mode === "daily"
-        ? `Sesi hari ini: ${this.queue.length} posisi, ${DAILY_SECONDS} detik per posisi. Timer jalan setelah lo klik bidak.`
-        : `${RUSH_SECONDS / 60} menit, ${RUSH_LIVES} nyawa. Timer jalan setelah lo klik bidak.`));
-      lines.push(div().text_size(12).text_color(this.note ? t.blocked : t.accent).child(this.note || (this.pick
-        ? `${this.pick} dipilih. Klik petak tujuannya.`
-        : `Langkah ${e.move_no}, lo ${e.me === "white" ? "putih" : "hitam"} (${e.win_before}%). Cari langkah terbaik.`)));
-      return v_flex().gap(4).children(lines);
+      return v_flex().gap(3)
+        .child(h_flex().gap(6).items_center()
+          .child(image(`mods/chess-coach/pieces/${white ? "wK" : "bK"}.svg`).w(18).h(18).flex_none())
+          .child(div().flex_1().min_w(0).text_size(13).font_medium().text_color(this.note ? t.blocked : t.foreground)
+            .child(this.note || (this.pick ? `${this.pick} dipilih. Klik petak tujuannya.` : `${white ? "Putih" : "Hitam"} jalan. Cari langkah terbaik.`))))
+        .child(div().text_size(12).text_color(t.muted).child(`Langkah ${e.move_no} · peluang menang ${e.win_before}%`))
+        .when(waiting, (el) => el.child(div().text_size(12).text_color(t.dim).child("Timer mulai saat lo klik bidak.")));
     }
     const ok = this.right();
     const san = this.guess ? e.legal?.[this.guess] || sqs(this.guess) : null;
-    const headline = this.timedOut ? "⏱ Waktu habis" : ok ? `✓ ${san}` : this.guess === e.played_uci?.slice(0, 4)
-      ? `✗ ${san}: langkah yang dulu lo mainin` : this.guess ? `✗ ${san}` : "Jawaban";
-    lines.push(h_flex().flex_wrap().gap(5).items_center().text_size(13)
-      .child(div().font_semibold().text_color(this.timedOut || (this.guess && !ok) ? t.blocked : this.guess ? t.done : t.foreground).child(headline))
-      .when(!ok, (el) => el.child(div().text_color(t.muted).child("· terbaik")).child(div().font_semibold().text_color(t.done).child(e.best || "-"))));
+    const bad = this.timedOut || (this.guess && !ok);
+    const tone = bad ? t.blocked : this.guess ? t.done : t.foreground;
+    const headline = this.timedOut ? "Waktu habis" : !this.guess ? "Jawaban"
+      : !ok && this.guess === e.played_uci?.slice(0, 4) ? `${san}: langkah yang dulu lo mainin` : san;
+    const icon = this.timedOut ? "clock" : !this.guess ? null : ok ? "check" : "x";
+    const lines = [h_flex().flex_wrap().gap(6).items_center().text_size(13)
+      .when(!!icon, (el) => el.child(svg(ICON(icon)).size(14).flex_none().text_color(tone)))
+      .child(div().font_semibold().text_color(tone).child(headline))
+      .when(!ok, (el) => el.child(div().text_color(t.muted).child("· terbaik")).child(div().font_semibold().text_color(t.done).child(e.best || "-")))];
     if (this.mode !== "rush") {
-      lines.push(div().text_size(11).text_color(t.muted).child(`Dulu: ${e.played} (${e.win_before}% → ${e.win_after}%)${e.reply_line.length ? ` · lawan bisa ${e.reply_line.join(" ")}` : ""}`));
-      lines.push(div().text_size(11).text_color(t.muted).child(`${q.c.name}: ${q.c.why}`));
+      lines.push(div().text_size(12).text_color(t.muted).child(`Dulu: ${e.played} (${e.win_before}% → ${e.win_after}%)${e.reply_line.length ? ` · lawan bisa ${e.reply_line.join(" ")}` : ""}`));
+      lines.push(div().text_size(12).text_color(t.muted).child(`${q.c.name}: ${q.c.why}`));
     }
-    return v_flex().gap(4).children(lines);
+    return v_flex().gap(5).children(lines);
   }
 
-  header(t, title, sub, right) {
-    return h_flex().gap(8).items_center()
-      .child(v_flex().flex_1().min_w(0)
-        .child(div().text_size(13).font_semibold().truncate().child(title))
-        .when(!!sub, (el) => el.child(div().text_size(11).text_color(t.muted).truncate().child(sub))))
+  header(t, title, meta, sub, right) {
+    return h_flex().gap(10).items_center()
+      .child(v_flex().flex_1().min_w(0).gap(2)
+        .child(h_flex().gap(7).items_baseline()
+          .child(div().min_w(0).text_size(14).font_semibold().truncate().child(title))
+          .when(!!meta, (el) => el.child(div().flex_none().text_size(12).text_color(t.muted).child(meta))))
+        .when(!!sub, (el) => el.child(typeof sub === "string" ? div().text_size(12).text_color(t.muted).truncate().child(sub) : sub)))
       .child(right || div());
   }
 
+  // Dim until the first click starts it, alarm color for the last seconds.
   clock(t, secs, warn) {
-    return div().flex_none().px(8).py(2).rounded(5).text_size(13).font_semibold()
-      .bg(secs <= warn ? t.blocked : t.raised).text_color(secs <= warn ? t.accent_foreground : t.foreground)
+    return div().flex_none().text_size(16).font_semibold().font_family(this.mono())
+      .text_color(!this.engaged ? t.dim : secs <= warn ? t.blocked : t.foreground)
       .child(`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`);
   }
 
+  // One segment per position of the session: right, wrong, now, still to come.
+  progress(t) {
+    const res = this.daily.results;
+    return h_flex().flex_none().gap(3).children(this.queue.map((_q, i) => div().flex_1().h(3).rounded(2)
+      .bg(i < res.length ? (res[i].ok ? t.done : t.blocked) : i === this.qi ? t.foreground : t.raised)));
+  }
+
   topBar(t) {
+    const tab = (id, label, mode, key, go, extra) => {
+      const on = this.mode === mode || (this.mode === "result" && this.result?.kind === mode);
+      return h_flex().id(id).flex_none().h(24).px(9).gap(5).items_center().rounded(6).text_size(12).cursor_pointer()
+        .text_color(on ? t.foreground : t.muted).when(on, (el) => el.bg(t.selected))
+        .hover((s) => s.bg(on ? t.selected : t.hover)).tooltip(`${label} (${key})`)
+        .on_click((_e, cx) => { go(); this.h.focus(); cx.notify(); }).child(label)
+        .when(!!extra, (el) => el.child(div().text_size(11).text_color(t.dim).child(extra)));
+    };
+    return h_flex().flex_none().h(38).px(8).gap(2).items_center().border_b_1().border_color(t.border)
+      .child(tab("m-daily", "Harian", "daily", 1, () => this.startDaily()))
+      .child(tab("m-rush", "Rush", "rush", 2, () => this.startRush(), this.db.rushBest ? String(this.db.rushBest) : null))
+      .child(tab("m-explore", "Jelajahi", "explore", 3, () => this.startExplore()))
+      .child(div().flex_1())
+      .child(this.iconButton(t, "mute", this.db.mute ? "volume-x" : "volume", this.db.mute ? "Nyalakan suara (m)" : "Matikan suara (m)",
+        () => { this.db.mute = !this.db.mute; this.persist(); }));
+  }
+
+  statusBar(t) {
     const d = this.db.days, cards = Object.values(this.db.cards), t0 = day();
     const streak = d.last === t0 || d.last === day(-1) ? d.streak : 0;
     const mastered = cards.filter((c) => c.box >= MASTERED).length;
-    const chip = (id, label, mode, go) => {
-      const on = this.mode === mode || (this.mode === "result" && this.result?.kind === mode);
-      return div().id(id).flex_none().px(9).py(3).rounded(12).text_size(11).cursor_pointer()
-        .bg(on ? t.selected : t.background).border(1).border_color(on ? t.accent : t.border)
-        .text_color(on ? t.foreground : t.muted).hover((s) => s.bg(t.hover))
-        .on_click((_e, cx) => { go(); this.h.focus(); cx.notify(); }).child(label);
-    };
-    const stats = [d.last === t0 ? `✓ hari ini · 🔥${streak}` : streak ? `🔥${streak}` : null, `${this.dueCount()} jatuh tempo`, `${mastered} dikuasai`].filter(Boolean).join(" · ");
-    return h_flex().flex_wrap().gap(6).items_center()
-      .child(chip("m-daily", "Harian", "daily", () => this.startDaily()))
-      .child(chip("m-rush", `Rush · ${this.db.rushBest}`, "rush", () => this.startRush()))
-      .child(chip("m-explore", "Jelajahi", "explore", () => this.startExplore()))
-      .child(div().flex_1().min_w(0).text_size(10).text_color(t.dim).truncate().child(stats))
-      .child(div().id("mute").flex_none().cursor_pointer().text_size(12).text_color(t.muted)
-        .on_click((_e, cx) => { this.db.mute = !this.db.mute; this.persist(); cx.notify(); }).child(this.db.mute ? "🔇" : "🔊"));
+    const item = (icon, color, label) => h_flex().flex_none().gap(4).items_center()
+      .when(!!icon, (el) => el.child(svg(ICON(icon)).size(12).flex_none().text_color(color))).child(label);
+    return h_flex().flex_none().h(28).px(12).gap(12).items_center().border_t_1().border_color(t.border).text_size(11).text_color(t.muted)
+      .child(item(null, null, `${this.dueCount()} jatuh tempo`))
+      .child(item(null, null, `${mastered} dikuasai`))
+      .child(div().flex_1())
+      .when(streak > 0, (el) => el.child(item("flame", t.ansi3, `${streak} hari`)))
+      .when(d.last === t0, (el) => el.child(item("check", t.done, "hari ini")));
   }
 
+  // Each view answers with [what scrolls, the buttons pinned under it].
   resultView(t) {
     const r = this.result;
     if (r.kind === "rush") {
-      return v_flex().gap(10)
-        .child(div().text_size(16).font_semibold().child(r.best ? "Rekor baru!" : "Rush selesai"))
-        .child(div().text_size(32).font_semibold().child(String(r.score)))
-        .child(div().text_size(12).text_color(t.muted).child(`${r.lives > 0 ? "Waktu habis" : "Nyawa habis"} · rekor ${r.record}`))
-        .child(h_flex().gap(6).child(this.button(t, "again", "Main lagi (enter)", () => this.startRush(), true)).child(this.button(t, "back", "Jelajahi (3)", () => this.startExplore())));
+      return [[
+        this.header(t, r.best ? "Rekor baru!" : "Rush selesai", null, `${r.lives > 0 ? "Waktu habis" : "Nyawa habis"} · rekor ${r.record}`),
+        h_flex().gap(8).items_baseline()
+          .child(div().text_size(40).font_semibold().child(String(r.score)))
+          .child(div().text_size(12).text_color(t.muted).child("benar")),
+      ], [this.button(t, "again", "Main lagi", () => this.startRush(), true, "enter"), this.button(t, "back", "Jelajahi", () => this.startExplore(), false, "3")]];
     }
     const right = r.results.filter((x) => x.ok).length;
     const per = {};
     for (const x of r.results) { per[x.concept] ||= { ok: 0, n: 0 }; per[x.concept].n++; if (x.ok) per[x.concept].ok++; }
     const name = (id) => this.report.concepts.find((c) => c.id === id)?.name || id;
-    return v_flex().gap(10)
-      .child(div().text_size(16).font_semibold().child("Sesi selesai"))
-      .child(h_flex().gap(8)
+    return [[
+      this.header(t, "Sesi selesai", null, `Besok: ${r.tomorrow} posisi jatuh tempo.`),
+      h_flex().py(10).rounded(10).bg(t.surface)
         .children([[`${right}/${r.results.length}`, "benar"], [`${r.bestStreak}`, "streak terbaik"], [`${this.db.days.streak}`, "hari beruntun"]]
-          .map(([n, label]) => v_flex().flex_1().p(8).rounded(6).bg(t.surface).border(1).border_color(t.border)
-            .child(div().text_size(18).font_semibold().child(n)).child(div().text_size(10).text_color(t.muted).child(label)))))
-      .child(v_flex().gap(3).children(Object.entries(per).map(([id, s]) => h_flex().justify_between().text_size(12)
-        .child(div().truncate().child(name(id)))
-        .child(div().flex_none().text_color(s.ok === s.n ? t.done : s.ok === 0 ? t.blocked : t.muted).child(`${s.ok}/${s.n}`)))))
-      .child(div().text_size(11).text_color(t.muted).child(`Besok: ${r.tomorrow} posisi jatuh tempo.`))
-      .child(h_flex().gap(6).child(this.button(t, "again", "Sesi lagi (enter)", () => this.startDaily(), true)).child(this.button(t, "back", "Jelajahi (3)", () => this.startExplore())));
+          .map(([n, label]) => v_flex().flex_1().px(12).gap(1)
+            .child(div().text_size(20).font_semibold().child(n)).child(div().text_size(11).text_color(t.muted).child(label)))),
+      v_flex().gap(6).children(Object.entries(per).map(([id, s]) => h_flex().gap(8).justify_between().text_size(12)
+        .child(div().min_w(0).truncate().child(name(id)))
+        .child(div().flex_none().font_family(this.mono()).text_color(s.ok === s.n ? t.done : s.ok === 0 ? t.blocked : t.muted).child(`${s.ok}/${s.n}`)))),
+    ], [this.button(t, "again", "Sesi lagi", () => this.startDaily(), true, "enter"), this.button(t, "back", "Jelajahi", () => this.startExplore(), false, "3")]];
   }
 
   playView(t) {
     const q = this.current();
-    if (!q) return div().text_size(12).text_color(t.muted).child("Nggak ada posisi.");
+    if (!q) return [[div().text_size(12).text_color(t.muted).child("Nggak ada posisi.")], []];
     if (this.mode === "daily") {
-      const d = this.daily, review = this.qi < d.reviews;
-      return v_flex().gap(8)
-        .child(this.header(t, `Sesi harian · ${this.qi + 1}/${this.queue.length}`, `${review ? "Ulangan" : "Baru"} · ${q.c.name}${d.streak > 1 ? ` · 🔥 ${d.streak}` : ""}`, this.clock(t, this.left ?? DAILY_SECONDS, 10)))
-        .child(this.board(q.e, this.boardSize(230)))
-        .child(this.feedback(t, q))
-        .child(h_flex().flex_wrap().gap(5)
-          .when(this.shown(), (el) => el.child(this.button(t, "next", this.qi + 1 < this.queue.length ? "Lanjut (enter)" : "Lihat hasil (enter)", () => this.nextDaily(), true)))
-          .when(!this.shown(), (el) => el.child(this.button(t, "reveal", "Nyerah (spasi)", () => { this.revealed = true; this.record(q, false); })))
-          .when(this.shown(), (el) => el.child(this.button(t, "ask", "Tanya agent (a)", (cx) => cx.spawn(async () => this.ask())))));
+      const d = this.daily, review = this.qi < d.reviews, last = this.qi + 1 >= this.queue.length;
+      const sub = h_flex().gap(8).items_center().text_size(12).text_color(t.muted)
+        .child(div().min_w(0).truncate().child(`${review ? "Ulangan" : "Baru"} · ${q.c.name}`))
+        .when(d.streak > 1, (el) => el.child(h_flex().flex_none().gap(3).items_center()
+          .child(svg(ICON("flame")).size(12).text_color(t.ansi3)).child(String(d.streak))));
+      return [[
+        this.header(t, "Sesi harian", `${this.qi + 1}/${this.queue.length}`, sub, this.clock(t, this.left ?? DAILY_SECONDS, 10)),
+        this.progress(t),
+        this.board(q.e, this.boardSize(285)),
+        this.feedback(t, q),
+      ], this.shown()
+        ? [this.button(t, "next", last ? "Lihat hasil" : "Lanjut", () => this.nextDaily(), true, "enter"),
+           this.button(t, "ask", "Tanya agent", (cx) => cx.spawn(async () => this.ask()), false, "a")]
+        : [this.button(t, "reveal", "Nyerah", () => { this.revealed = true; this.record(q, false); }, false, "spasi")]];
     }
     if (this.mode === "rush") {
       const r = this.rush;
-      return v_flex().gap(8)
-        .child(this.header(t, `Rush · ${r.score} benar`, `${"♥".repeat(r.lives)}${"♡".repeat(RUSH_LIVES - r.lives)} · rekor ${this.db.rushBest}`, this.clock(t, this.left ?? RUSH_SECONDS, 20)))
-        .child(this.board(q.e, this.boardSize(150)))
-        .child(this.feedback(t, q));
+      const sub = h_flex().gap(8).items_center().text_size(12).text_color(t.muted)
+        .child(h_flex().gap(3).children(Array.from({ length: RUSH_LIVES }, (_x, i) => svg(ICON("heart")).size(12).text_color(i < r.lives ? t.ansi1 : t.dim))))
+        .child(`rekor ${this.db.rushBest}`);
+      return [[
+        this.header(t, "Rush", `${r.score} benar`, sub, this.clock(t, this.left ?? RUSH_SECONDS, 20)),
+        this.board(q.e, this.boardSize(230)),
+        this.feedback(t, q),
+      ], []];
     }
     // explore
     const c = q.c, n = this.report.concepts.length;
-    const head = h_flex().gap(6).items_center()
-      .child(this.button(t, "cprev", "▲", () => this.browse(-1, 0)))
-      .child(this.button(t, "cnext", "▼", () => this.browse(1, 0)))
-      .child(v_flex().id("title").flex_1().min_w(0).cursor_pointer()
+    const head = h_flex().gap(4).items_center()
+      .child(v_flex().id("title").flex_1().min_w(0).gap(2).cursor_pointer().tooltip("Daftar konsep (c)")
         .on_click((_e, cx) => { this.listOpen = !this.listOpen; cx.notify(); })
-        .child(div().text_size(13).font_semibold().truncate().child(c.name))
-        .child(div().text_size(11).text_color(t.muted).truncate().child(`${c.name_id} · ${c.games} game${c.mechanical ? "" : " · tafsiran"}`)))
-      .child(div().flex_none().text_size(11).text_color(t.dim).child(`${this.ci + 1}/${n}`));
+        .child(h_flex().gap(4).items_center()
+          .child(div().min_w(0).text_size(14).font_semibold().truncate().child(c.name))
+          .child(svg(ICON(this.listOpen ? "chevron-up" : "chevron-down")).size(12).flex_none().text_color(t.muted)))
+        .child(div().text_size(12).text_color(t.muted).truncate().child(`${c.name_id} · ${c.games} game${c.mechanical ? "" : " · tafsiran"}`)))
+      .child(div().flex_none().px(4).text_size(11).font_family(this.mono()).text_color(t.dim).child(`${this.ci + 1}/${n}`))
+      .child(this.iconButton(t, "cprev", "chevron-up", "Konsep sebelumnya (↑)", () => this.browse(-1, 0)))
+      .child(this.iconButton(t, "cnext", "chevron-down", "Konsep berikutnya (↓)", () => this.browse(1, 0)));
     if (this.listOpen) {
-      return v_flex().gap(8).size_full().child(head).child(v_flex().id("concepts").flex_1().min_h(0).overflow_y_scrollbar()
-        .children(this.report.concepts.map((x, i) => h_flex().id(`c-${i}`).px(8).py(5).gap(8).rounded(5).items_center().cursor_pointer()
-          .bg(i === this.ci ? t.selected : t.background).hover((s) => s.bg(t.hover))
-          .on_click((_e, cx) => { this.ci = i; this.ei = 0; this.resetQuestion(); this.listOpen = false; this.h.focus(); cx.notify(); })
-          .child(div().w(18).flex_none().text_size(11).text_color(t.dim).child(`${i + 1}`))
-          .child(div().flex_1().min_w(0).text_size(12).truncate().child(x.name))
-          .child(div().flex_none().text_size(11).text_color(t.muted).child(`${x.games}${x.mechanical ? "" : "~"}`)))));
+      return [[head, v_flex().gap(1).children(this.report.concepts.map((x, i) => h_flex().id(`c-${i}`).h(28).flex_none().px(8).gap(8).rounded(7).items_center().cursor_pointer()
+        .when(i === this.ci, (el) => el.bg(t.selected)).hover((s) => s.bg(i === this.ci ? t.selected : t.hover))
+        .on_click((_e, cx) => { this.ci = i; this.ei = 0; this.resetQuestion(); this.listOpen = false; this.h.focus(); cx.notify(); })
+        .child(div().w(18).flex_none().text_size(11).font_family(this.mono()).text_color(t.dim).child(`${i + 1}`))
+        .child(div().flex_1().min_w(0).text_size(12).truncate().child(x.name))
+        .child(div().flex_none().text_size(11).text_color(t.muted).child(`${x.games}${x.mechanical ? "" : "~"}`))))], []];
     }
-    return v_flex().gap(8)
-      .child(head)
-      .child(this.board(q.e, this.boardSize(210)))
-      .child(h_flex().flex_wrap().gap(5).items_center()
-        .child(this.button(t, "prev", "◀", () => this.browse(0, -1)))
-        .child(div().text_size(11).text_color(t.muted).child(`${this.ei + 1}/${c.examples.length}`))
-        .child(this.button(t, "nextex", "▶", () => this.browse(0, 1)))
-        .child(this.guess || this.timedOut
-          ? this.button(t, "retry", "Ulang", () => this.resetQuestion())
-          : this.button(t, "reveal", this.revealed ? "Tutup" : "Jawaban", () => { this.revealed = !this.revealed; this.pick = null; }))
-        .child(this.button(t, "ask", "Tanya", (cx) => cx.spawn(async () => this.ask())))
-        .child(this.button(t, "game", "Game", (cx) => cx.open_url(q.e.link)))
-        .child(this.button(t, "practice", "Latihan", (cx) => cx.open_url(c.practice))))
-      .child(this.feedback(t, q));
+    return [[head, this.board(q.e, this.boardSize(275)), this.feedback(t, q)], [
+      this.iconButton(t, "prev", "chevron-left", "Contoh sebelumnya (←)", () => this.browse(0, -1)),
+      div().flex_none().text_size(11).font_family(this.mono()).text_color(t.muted).child(`${this.ei + 1}/${c.examples.length}`),
+      this.iconButton(t, "nextex", "chevron-right", "Contoh berikutnya (→)", () => this.browse(0, 1)),
+      div().flex_1(),
+      this.guess || this.timedOut
+        ? this.button(t, "retry", "Ulang", () => this.resetQuestion())
+        : this.button(t, "reveal", this.revealed ? "Tutup" : "Jawaban", () => { this.revealed = !this.revealed; this.pick = null; }, false, "spasi"),
+      this.button(t, "ask", "Tanya", (cx) => cx.spawn(async () => this.ask()), false, "a"),
+      this.button(t, "game", "Game", (cx) => cx.open_url(q.e.link), false, "o"),
+      this.button(t, "practice", "Latihan", (cx) => cx.open_url(c.practice)),
+    ]];
   }
 
   render(cx) {
     const t = theme();
-    const root = v_flex().id("root").size_full().p(12).gap(8).bg(t.background).text_color(t.foreground)
-      .overflow_y_scrollbar()
+    const root = v_flex().id("root").size_full().bg(t.background).text_color(t.foreground)
       .track_focus(this.h).on_key_down((e, cx) => this.key(e, cx))
       .on_mouse_down("left", () => this.h.focus())
       .on_size_change((size, cx) => { this.size = size; cx.notify(); });
-    if (this.error || !this.report || !this.all) return root.child(div().text_size(12).text_color(t.muted).child(this.error || "Memuat…"));
-    root.child(this.topBar(t));
-    if (this.mode === "result") return root.child(this.resultView(t));
-    return root.child(this.playView(t));
+    if (this.error || !this.report || !this.all) return root.child(div().p(12).text_size(12).text_color(t.muted).child(this.error || "Memuat…"));
+    const [body, actions] = this.mode === "result" ? this.resultView(t) : this.playView(t);
+    return root
+      .child(this.topBar(t))
+      .child(v_flex().id("body").flex_1().min_h(0).overflow_y_scrollbar().p(12).gap(10).children(body))
+      .when(actions.length > 0, (el) => el.child(h_flex().flex_none().flex_wrap().px(12).pb(10).gap(6).items_center().children(actions)))
+      .child(this.statusBar(t));
   }
 }
